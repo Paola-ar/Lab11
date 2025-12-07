@@ -6,6 +6,12 @@ class Model:
     def __init__(self):
         self.G = nx.Graph()
 
+        self.id_map = {} # id rifugio
+        self.rifugi = [] # lista completa rifugi
+        self.connessioni = [] # connessioni filtrate per anno
+
+        self.load_rifugi()
+
     def build_graph(self, year: int):
         """
         Costruisce il grafo (self.G) dei rifugi considerando solo le connessioni
@@ -14,6 +20,20 @@ class Model:
         :param year: anno limite fino al quale selezionare le connessioni da includere.
         """
         # TODO
+        self.connessioni = DAO.readAllConnessione(year)
+        edges = []
+        for c in self.connessioni:
+            if c.id_rifugio1 in self.id_map and c.id_rifugio2 in self.id_map:
+                r1 = self.id_map[c.id_rifugio1]
+                r2 = self.id_map[c.id_rifugio2]
+                edges.append((r1,r2))
+        self.G.add_edges_from(edges)
+
+    def load_rifugi(self):
+        """ Carica tutti i rifugi da databse e crea la mappa id:Rifugio"""
+        self.rifugi = DAO.readAllRifugi()
+        self.id_map = {r.id: r for r in self.rifugi}
+
 
     def get_nodes(self):
         """
@@ -21,6 +41,8 @@ class Model:
         :return: lista dei rifugi presenti nel grafo.
         """
         # TODO
+        return list(self.G.nodes()) # lista degli id dei rifugi nel grafo
+
 
     def get_num_neighbors(self, node):
         """
@@ -29,6 +51,8 @@ class Model:
         :return: numero di vicini diretti del nodo indicato
         """
         # TODO
+        return len(list(self.G.neighbors(node)))
+
 
     def get_num_connected_components(self):
         """
@@ -36,6 +60,8 @@ class Model:
         :return: numero di componenti connesse
         """
         # TODO
+        return nx.number_connected_components(self.G)
+
 
     def get_reachable(self, start):
         """
@@ -55,3 +81,21 @@ class Model:
         """
 
         # TODO
+        # dfs_tree
+        tree = nx.dfs_tree(self.G, start)
+        reachable_dfs = list(tree.nodes)
+        if start in reachable_dfs:
+            reachable_dfs.remove(start)
+
+        # DFS ricorsivo
+        visitati = set()
+
+        def dfs_ricorsivo(node):
+            visitati.add(node)
+            for neighbor in self.G.neighbors(node):
+                if neighbor not in visitati:
+                    dfs_ricorsivo(neighbor)
+
+        dfs_ricorsivo(start)
+        visitati.remove(start)
+        return list(visitati)
